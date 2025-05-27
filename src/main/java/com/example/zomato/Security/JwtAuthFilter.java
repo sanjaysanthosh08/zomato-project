@@ -23,7 +23,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private JwtService jwtService;
 
     @Autowired
-    @Lazy // ✅ Fix: Delay the injection to break circular dependency
+    @Lazy // Fix: Delay injection to avoid circular dependency
     private UserDetailsService userDetailsService;
 
     @Override
@@ -42,7 +42,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7);
-        username = jwtService.extractUsername(jwt);
+
+        try {
+            username = jwtService.extractUsername(jwt);
+        } catch (Exception e) {
+            // Log exception if you want
+            // e.g. logger.warn("JWT token parsing failed", e);
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);

@@ -1,9 +1,10 @@
 package com.example.zomato.Controller;
 
-import com.example.zomato.Entity.UserEntity;
-import com.example.zomato.Service.JwtService;
-import com.example.zomato.Service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.zomato.Service.AuthService;
+import com.example.zomato.dto.JwtResponse;
+import com.example.zomato.dto.LoginRequest;
+import com.example.zomato.dto.SignupRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,27 +13,29 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "*")
 public class AuthController {
 
-    @Autowired
-    private UserService userService;
+    private final AuthService authService;
 
-    @Autowired
-    private JwtService jwtService;
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
 
     @PostMapping("/signup")
-    public ResponseEntity<String> registerUser(@RequestBody UserEntity user) {
-        String message = userService.register(user);
-        return ResponseEntity.ok(message);
+    public ResponseEntity<String> register(@Valid @RequestBody SignupRequest signupRequest) {
+        String response = authService.register(signupRequest);
+        if (response.equals("User registered successfully")) {
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestBody UserEntity user) {
-        boolean isAuthenticated = userService.authenticate(user.getUsername(), user.getPassword());
-
-        if (isAuthenticated) {
-            String token = jwtService.generateToken(user.getUsername());
-            return ResponseEntity.ok(token);
-        } else {
-            return ResponseEntity.status(401).body("Invalid credentials");
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
+        try {
+            JwtResponse jwt = authService.login(loginRequest);
+            return ResponseEntity.ok(jwt);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(401).body(e.getMessage());
         }
     }
 }
